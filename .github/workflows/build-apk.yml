@@ -1,0 +1,62 @@
+name: Build OBlender APK
+
+# Fixes applied in this branch:
+# 1. Removed ~400MB of dead assets: CUDA (.cubin/.ptx), AMD HIP (.hipfb/.fatbin) Cycles GPU
+#    kernels and Windows-only Python modules (.pyd/.dll) - none can load on Android arm64.
+# 2. Removed libyaml-cpp.a (static ar archive, never packaged by APK anyway).
+# 3. Disabled the CMake externalNativeBuild step because it references hardcoded
+#    author-machine paths (D:/FreeProjects/...) with Blender static libs that are not in this repo.
+#    Instead, prebuilt libblender.so from the upstream v0.0.5 release APK is injected
+#    into jniLibs at build time, so the produced APK matches the official one.
+# 4. jcenter() replaced by mavenCentral() (jcenter is discontinued/flaky for CI).
+
+on:
+  push:
+    branches: [ main, "opt/**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          yes | sdkmanager "platforms;android-30" "build-tools;30.0.3" >/dev/null || true
+
+      - name: Set up Gradle 6.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '6.5'
+
+      - name: Inject prebuilt libblender.so from upstream release v0.0.5
+        run: |
+          curl -sSL -o upstream-apk.bin \
+            https://github.com/dshawshank/APP-android_arm64/releases/download/v0.0.5/blender.on.Android.v0.0.5.apk
+          unzip -j -o upstream-apk.bin "lib/arm64-v8a/libblender.so" \
+            -d OBlender/app/src/main/jniLibs/arm64-v8a/
+          rm -f upstream-apk.bin
+          ls -lh OBlender/app/src/main/jniLibs/arm64-v8a/libblender.so
+
+      - name: Build debug APK
+        run: |
+          gradle -p OBlender :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-on-android-v0.0.6-opt
+          path: OBlender/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
