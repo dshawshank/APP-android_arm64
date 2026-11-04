@@ -22,17 +22,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17 (sdkmanager tooling)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up JDK 11 (Gradle/AGP)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
+          id: java11
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK components
         run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
           yes | sdkmanager --licenses >/dev/null || true
           yes | sdkmanager "platforms;android-30" "build-tools;30.0.3" >/dev/null || true
 
@@ -52,6 +60,7 @@ jobs:
 
       - name: Build debug APK
         run: |
+          export JAVA_HOME="$JAVA_HOME_11_X64"
           gradle -p OBlender :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK artifact

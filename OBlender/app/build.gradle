@@ -10,15 +10,10 @@ android {
         applicationId "com.epai.oblender"
         minSdkVersion 28
         targetSdkVersion 30
-        versionCode 2
-        versionName "0.0.3"
+        versionCode 6
+        versionName "0.0.6"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            cmake {
-                abiFilters "arm64-v8a"
-            }
-        }
     }
 
     buildTypes {
@@ -27,12 +22,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    externalNativeBuild {
-        cmake {
-            path "src/main/cpp/CMakeLists.txt"
-            version "3.10.2"
-        }
-    }
+    // Prebuilt libblender.so is provided in jniLibs (extracted from upstream v0.0.5 release);
+    // rebuilding it from source requires the author's private static libs (D:/ projects), so the
+    // externalNativeBuild (CMake) step is disabled for CI builds on GitHub Actions.
+    // To restore it, uncomment and run on a machine with the Blender static libs available.
+    // externalNativeBuild {
+    //     cmake {
+    //         path "src/main/cpp/CMakeLists.txt"
+    //         version "3.10.2"
+    //     }
+    // }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
